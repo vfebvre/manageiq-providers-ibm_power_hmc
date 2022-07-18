@@ -1,6 +1,7 @@
 class ManageIQ::Providers::IbmPowerHmc::InfraManager::Lpar < ManageIQ::Providers::IbmPowerHmc::InfraManager::Vm
   supports :rename
   supports :publish
+  supports :migrate
 
   def provider_object(connection = nil)
     connection ||= ext_management_system.connect
@@ -10,7 +11,7 @@ class ManageIQ::Providers::IbmPowerHmc::InfraManager::Lpar < ManageIQ::Providers
   def poweron(params = {})
     ext_management_system.with_provider_connection do |connection|
       connection.poweron_lpar(ems_ref, params)
-    rescue IbmPowerHmc::Connection::HttpError => e
+    rescue IbmPowerHmc::Connection::HttpError, IbmPowerHmc::HmcJob::JobFailed => e
       $ibm_power_hmc_log.error("error powering on LPAR #{ems_ref} with params=#{params}: #{e}")
       raise
     end
@@ -19,7 +20,7 @@ class ManageIQ::Providers::IbmPowerHmc::InfraManager::Lpar < ManageIQ::Providers
   def poweroff(params = {})
     ext_management_system.with_provider_connection do |connection|
       connection.poweroff_lpar(ems_ref, params)
-    rescue IbmPowerHmc::Connection::HttpError => e
+    rescue IbmPowerHmc::Connection::HttpError, IbmPowerHmc::HmcJob::JobFailed => e
       $ibm_power_hmc_log.error("error powering off LPAR #{ems_ref} with params=#{params}: #{e}")
       raise
     end
@@ -38,8 +39,18 @@ class ManageIQ::Providers::IbmPowerHmc::InfraManager::Lpar < ManageIQ::Providers
     $ibm_power_hmc_log.info("#{self.class}##{__method__} ems_ref #{ems_ref} template_name #{options[:name]}")
     ext_management_system.with_provider_connection do |connection|
       connection.capture_lpar(ems_ref, host.ems_ref, options[:name]).results['CapturedTemplateUuid']
-    rescue IbmPowerHmc::Connection::HttpError => e
+    rescue IbmPowerHmc::Connection::HttpError, IbmPowerHmc::HmcJob::JobFailed => e
       $ibm_power_hmc_log.error("error creating template #{options[:name]} from LPAR #{ems_ref}: #{e}")
+      raise
+    end
+  end
+
+  def migrate(options)
+    ext_management_system.with_provider_connection do |connection|
+      connection.lpar_migrate_validate(ems_ref, options[:target_sys_name])
+      connection.lpar_migrate(ems_ref, options[:target_sys_name])
+    rescue IbmPowerHmc::Connection::HttpError, IbmPowerHmc::HmcJob::JobFailed => e
+      $ibm_power_hmc_log.error("error migrating LPAR #{ems_ref} to #{options[:target_sys_name]}: #{e}")
       raise
     end
   end
