@@ -66,6 +66,14 @@
           :display: :edit
           :data_type: :integer
           :required_description: Host Name
+        :placement_rp_name:
+          :values_from:
+            :method: :allowed_respools
+          :auto_select_single: false
+          :description: Name
+          :required: false
+          :display: :edit
+          :data_type: :integer
       :display: :show
     :network:
       :description: Network

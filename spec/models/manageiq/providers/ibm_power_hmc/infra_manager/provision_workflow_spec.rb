@@ -14,6 +14,9 @@ describe ManageIQ::Providers::IbmPowerHmc::InfraManager::ProvisionWorkflow do
   let!(:vlan1)   { FactoryBot.create(:lan, :name => "lan_A", :switch_id => switch1.id, :ems_ref => host1.ems_ref) }
   let!(:vlan2)   { FactoryBot.create(:lan, :name => "lan_B", :switch_id => switch2.id, :ems_ref => host2.ems_ref) }
   let!(:vlan3)   { FactoryBot.create(:lan, :name => "lan_C", :switch_id => switch3.id, :ems_ref => host3.ems_ref) }
+  let!(:pool1)   { FactoryBot.create(:ibm_power_hmc_resource_pool, :ext_management_system => ems, :ems_ref => "host1_respool1", :name => "respool1") }
+  let!(:pool2)   { FactoryBot.create(:ibm_power_hmc_resource_pool, :ext_management_system => ems, :ems_ref => "host2_respool2", :name => "respool2") }
+  let!(:pool3)   { FactoryBot.create(:ibm_power_hmc_resource_pool, :ext_management_system => ems, :ems_ref => "host3_respool3", :name => "respool3") }
 
   before do
     stub_dialog(:get_dialogs)
@@ -21,6 +24,9 @@ describe ManageIQ::Providers::IbmPowerHmc::InfraManager::ProvisionWorkflow do
     host2.advanced_settings.create!(:name => "hmc_managed", :value => "true")
     # Host3 is not HMC-managed and thus should not appear as an allowed host
     host3.advanced_settings.create!(:name => "hmc_managed", :value => "false")
+    pool1.set_parent(host1)
+    pool2.set_parent(host2)
+    pool3.set_parent(host3)
   end
 
   context '#allowed_hosts' do
@@ -41,6 +47,17 @@ describe ManageIQ::Providers::IbmPowerHmc::InfraManager::ProvisionWorkflow do
     it 'finds all vlans with a selected host' do
       allow(workflow).to receive(:allowed_hosts).with(no_args).and_return([workflow.host_to_hash_struct(host1)])
       expect(workflow.allowed_vlans).to match_array([[vlan1.name, vlan1.name]])
+    end
+  end
+
+  context "#allowed_respools" do
+    it 'finds all respools with no selected host' do
+      expect(workflow.allowed_respools).to match_array([[pool1.name, pool1.name], [pool2.name, pool2.name]])
+    end
+
+    it 'finds all respools with a selected host' do
+      allow(workflow).to receive(:allowed_hosts).with(no_args).and_return([workflow.host_to_hash_struct(host1)])
+      expect(workflow.allowed_respools).to match_array([[pool1.name, pool1.name]])
     end
   end
 end

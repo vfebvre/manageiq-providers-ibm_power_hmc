@@ -25,4 +25,10 @@ class ManageIQ::Providers::IbmPowerHmc::InfraManager::ProvisionWorkflow < Manage
       host_to_hash_struct(h)
     end
   end
+
+  def allowed_respools(_options = {})
+    return [] if (src = resources_for_ui).blank? || src[:ems].nil?
+
+    load_ar_obj(src[:ems]).resource_pools.to_h { |pool| [pool.ems_ref, pool.name] }
+  end
 end
